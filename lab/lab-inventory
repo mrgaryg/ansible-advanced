@@ -1,8 +1,9 @@
-ansible1.example.com
-ansible2.example.com
+ansible1
+ansible2
+ansible3
 
 [lamp]
-ansible1.example.com
+ansible1
 
 [file]
-ansible2.example.com
+ansible2
