@@ -3,6 +3,8 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+Vagrant.require_version ">= 1.7.4"
+
 # use two digits id below, please
 nodes = [
   { :hostname => 'ansible1', :ip => '10.0.15.11', :id => '11', :memory => 256 },
@@ -11,7 +13,7 @@ nodes = [
 ]
 
 Vagrant.configure("2") do |config|
-  required_plugins = %w( vagrant-vbguest vagrant-disksize vagrant-hostmanager )
+  required_plugins = %w( vagrant-vbguest vagrant-hostmanager )
   _retry = false
   required_plugins.each do |plugin|
       unless Vagrant.has_plugin? plugin
@@ -24,6 +26,7 @@ Vagrant.configure("2") do |config|
       exec "vagrant " + ARGV.join(' ')
   end
 
+  config.linked_clone = true if Vagrant::VERSION =~ /^1.8/
   config.ssh.insert_key = false
   # Manage /etc/hosts on the guests
   config.hostmanager.enabled = true # Set /etc/hosts in the guests on 'vagrant up'
@@ -39,6 +42,7 @@ Vagrant.configure("2") do |config|
   #   config.proxy.no_proxy = "localhost,127.0.0.1,.example.com"
   # end
 
+
   nodes.each do |node|
     config.vm.define node[:hostname], autostart: true do |node_config|
       nodename = node[:hostname]
@@ -47,7 +51,6 @@ Vagrant.configure("2") do |config|
       node_config.vm.network :private_network, ip: node[:ip]
       node_config.vm.synced_folder ".", "/vagrant", type: "virtualbox", create: true
       node_config.vm.provider "virtualbox" do |vb|
-        vb.linked_clone = true
         vb.memory = node[:memory]
         # Use VBoxManage to customize the VM.
         # Change video memory:
@@ -68,25 +71,74 @@ Vagrant.configure("2") do |config|
     end
   end
   # create some windows servers
-  maxWinhost = 1
+  # config.vm.provider "virtualbox" do |v|
+  #   v.gui = true
+  #   v.customize ["modifyvm", :id, "--memory", 2048]
+  #   v.customize ["modifyvm", :id, "--cpus", 2]
+  #   v.customize ["modifyvm", :id, "--vram", 128]
+  #   v.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+  #   v.customize ["modifyvm", :id, "--accelerate3d", "on"]
+  #   v.customize ["modifyvm", :id, "--accelerate2dvideo", "on"]
+  #   v.linked_clone = true if Vagrant::VERSION =~ /^1.8/
+  # end
+
+  # # Sample win2016 server config
+  maxWin16host = 1
   # https://docs.vagrantup.com/v2/vagrantfile/tips.html
-  (1..maxWinhost).each do |i|
+  (1..maxWin16host).each do |i|
     config.vm.define "answinsrvr16#{i}", autostart: false do |node|
-      node.vm.box = "jmv74211/windows2016"
-      node.vm.box_version = "1.0"
+      node.vm.box = "StefanScherer/windows_2016"
+      # node.vm.box = "jmv74211/windows2016"
+      # node.vm.box_version = "1.0"
       node.vm.hostname = "answin16#{i}"
+      # node.vm.network "public_network"
       node.vm.network :private_network, ip: "10.0.15.2#{i}"
       node.vm.network "forwarded_port", guest: 80, host: "808#{i}"
       node.vm.provider "virtualbox" do |vb|
+        # vb.linked_clone = true
+        vb.memory = "4096"
+        # Boot with GUI mode
+        vb.gui = true
+        # Use VBoxManage to customize the VM
+        # Set video memory:
+        vb.customize ["modifyvm", :id, "--vram", "64"]
+        # Set ostype:
+        vb.customize ["modifyvm", :id, "--ostype", "Windows2016_64"]
+        # VM is modified to have a host CPU execution cap of 50%,
+        # meaning that no matter how much CPU is used in the VM,
+        # no more than 50% would be used on your own host machine.
+        vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
+        vb.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+        vb.customize ["modifyvm", :id, "--accelerate3d", "on"]
+        vb.customize ["modifyvm", :id, "--accelerate2dvideo", "on"]
+      end
+      node.vm.provision :hostmanager
+    end
+  end
+  # Spinup Windows Server 2019. Inspired by the following repo
+  # https://github.com/mrgaryg/docker-windows-box.git
+  maxWin19host = 1
+  # https://docs.vagrantup.com/v2/vagrantfile/tips.html
+  (1..maxWin19host).each do |i|
+    config.vm.define "answinsrvr19#{i}", autostart: false do |node|
+    # node.vm.box = "jmv74211/windows2016"
+    # node.vm.box_version = "1.0"
+      node.vm.box = "StefanScherer/windows_2019"
+      node.vm.communicator = "winrm"
+      node.vm.hostname = "answin16#{i}"
+      node.vm.network "public_network"
+      node.vm.network :private_network, ip: "10.0.15.1#{i}"
+      node.vm.network "forwarded_port", guest: 80, host: "808#{i}"
+      node.vm.provider "virtualbox" do |vb|
         vb.linked_clone = true
-        vb.memory = "2048"
+        vb.memory = "4096"
         # Don't boot with headless mode
         vb.gui = true
         # Use VBoxManage to customize the VM.
         # Change video memory:
         vb.customize ["modifyvm", :id, "--vram", "64"]
         # Change ostype:
-        vb.customize ["modifyvm", :id, "--ostype", "Windows2016_64"]
+        vb.customize ["modifyvm", :id, "--ostype", "Windows2019_64"]
         # VM is modified to have a host CPU execution cap of 50%,
         # meaning that no matter how much CPU is used in the VM,
         # no more than 50% would be used on your own host machine.
