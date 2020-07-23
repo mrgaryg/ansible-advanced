@@ -1,0 +1,3 @@
+[submodule "rhce8-book"]
+	path = rhce8-book
+	url = https://github.com/sandervanvugt/rhce8-book.git

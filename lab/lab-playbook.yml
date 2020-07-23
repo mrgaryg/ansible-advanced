@@ -1,7 +1,7 @@
 ---
 - name: doing generic stuff
   hosts: all
-  vars: 
+  vars:
     firewall: firewalld
 
   tasks:

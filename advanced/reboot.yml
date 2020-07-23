@@ -1,6 +1,6 @@
 ---
 - name: restart a server
-  hosts: ansible2.example.com
+  hosts: ansible2
   tasks:
     - name: restart server
       shell: sleep 2 && shutdown -r now "rebooting, please wait"

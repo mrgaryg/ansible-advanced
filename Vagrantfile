@@ -120,12 +120,12 @@ Vagrant.configure("2") do |config|
   maxWin19host = 1
   # https://docs.vagrantup.com/v2/vagrantfile/tips.html
   (1..maxWin19host).each do |i|
-    config.vm.define "answinsrvr19#{i}", autostart: false do |node|
+    config.vm.define "win19#{i}", autostart: false do |node|
     # node.vm.box = "jmv74211/windows2016"
     # node.vm.box_version = "1.0"
       node.vm.box = "StefanScherer/windows_2019"
       node.vm.communicator = "winrm"
-      node.vm.hostname = "answin16#{i}"
+      node.vm.hostname = "win19#{i}"
       node.vm.network "public_network"
       node.vm.network :private_network, ip: "10.0.15.1#{i}"
       node.vm.network "forwarded_port", guest: 80, host: "808#{i}"

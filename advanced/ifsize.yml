@@ -7,4 +7,4 @@
       name: vsftpd
       state: latest
     with_items: "{{ ansible_mounts }}"
-    when: item.mount == "/boot" and item.size_available > 100000000
+    when: item.mount == "/var/ftp" and item.size_available > 100000000

@@ -1,7 +1,11 @@
 ---
 - hosts: all
   tasks:
+  # Intentionaly meant to fail to show an example.
     - name: set waiting limit
-      command: /bin/sleep 20
-      async: 5
-      poll: 2
+      command: /bin/sleep 10
+      async: 20
+      poll: 5
+    - name: do something
+      debug:
+        msg: we are still wating

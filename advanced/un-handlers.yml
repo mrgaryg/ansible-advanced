@@ -1,6 +1,7 @@
 ---
 - name: clean up webserver
   hosts: all
+  gather_facts: no
   tasks:
     - name: stop web
       service:
