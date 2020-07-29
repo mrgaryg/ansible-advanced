@@ -3,13 +3,13 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-Vagrant.require_version ">= 1.7.4"
+Vagrant.require_version ">= 1.8.0"
 
 # use two digits id below, please
 nodes = [
-  { :hostname => 'ansible1', :ip => '10.0.15.11', :id => '11', :memory => 256 },
-  { :hostname => 'ansible2', :ip => '10.0.15.12', :id => '12', :memory => 256 },
-  { :hostname => 'ansible3', :ip => '10.0.15.13', :id => '13', :memory => 256 },
+  { :hostname => 'ansible1', :ip => '10.0.15.11', :id => '11', :memory => 4096 },
+  { :hostname => 'ansible2', :ip => '10.0.15.12', :id => '12', :memory => 1024 },
+  { :hostname => 'ansible3', :ip => '10.0.15.13', :id => '13', :memory => 1024 },
 ]
 
 Vagrant.configure("2") do |config|
@@ -54,7 +54,7 @@ Vagrant.configure("2") do |config|
         vb.memory = node[:memory]
         # Use VBoxManage to customize the VM.
         # Change video memory:
-        vb.customize ["modifyvm", :id, "--vram", "64"]
+        vb.customize ["modifyvm", :id, "--vram", "8"]
         # Change ostype:
         vb.customize ["modifyvm", :id, "--ostype", "RedHat_64"]
         # VM is modified to have a host CPU execution cap of 50%,
@@ -65,9 +65,9 @@ Vagrant.configure("2") do |config|
       end
       # Set /etc/hosts in the guests on 'vagrant provision'
       node_config.vm.provision :hostmanager
-      # if nodename == "mgmt"
-      #   node_config.vm.provision :shell, path: "bootstrap-mgmt.sh"
-      # end
+      if nodename == "ansible1"
+        node_config.vm.provision :shell, path: "install-awx.sh"
+      end
     end
   end
   # create some windows servers
