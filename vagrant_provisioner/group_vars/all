@@ -1,0 +1,19 @@
+packages:
+- python3
+- python3-devel
+- python3-pip
+- python-docker-py
+- bash-completion
+- vim-enhanced
+- redhat-lsb-core
+- git
+- ca-certificates
+
+docker_packages:
+- yum-utils
+- device-mapper-persistent-data
+- lvm2
+
+enable_docker_edge: no
+enable_docker_test: no
+selinux_enabled: no

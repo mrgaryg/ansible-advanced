@@ -7,13 +7,14 @@ Vagrant.require_version ">= 1.8.0"
 
 # use two digits id below, please
 nodes = [
-  { :hostname => 'ansible1', :ip => '10.0.15.11', :id => '11', :memory => 4096 },
-  { :hostname => 'ansible2', :ip => '10.0.15.12', :id => '12', :memory => 1024 },
-  { :hostname => 'ansible3', :ip => '10.0.15.13', :id => '13', :memory => 1024 },
+  { :hostname => 'ansible1', :ip => '10.0.15.11', :id => '11', :memory => 1024 },
+  # { :hostname => 'ansible2', :ip => '10.0.15.12', :id => '12', :memory => 1024 },
+  # { :hostname => 'ansible3', :ip => '10.0.15.13', :id => '13', :memory => 1024 },
 ]
 
+# Add required plugins
 Vagrant.configure("2") do |config|
-  required_plugins = %w( vagrant-vbguest vagrant-hostmanager )
+  required_plugins = %w( vagrant-vbguest vagrant-hostmanager vagrant-reload vagrant-disksize )
   _retry = false
   required_plugins.each do |plugin|
       unless Vagrant.has_plugin? plugin
@@ -42,7 +43,7 @@ Vagrant.configure("2") do |config|
   #   config.proxy.no_proxy = "localhost,127.0.0.1,.example.com"
   # end
 
-
+  config.vm.box_check_update = false
   nodes.each do |node|
     config.vm.define node[:hostname], autostart: true do |node_config|
       nodename = node[:hostname]
@@ -66,7 +67,40 @@ Vagrant.configure("2") do |config|
       # Set /etc/hosts in the guests on 'vagrant provision'
       node_config.vm.provision :hostmanager
       if nodename == "ansible1"
-        node_config.vm.provision :shell, path: "install-awx.sh"
+        # Disable selinux and firewalld
+        # node_config.vm.provision :shell, path: "./vagrant_provisioner/install-awx-pre.sh"
+        node_config.vm.provision :ansible do |ansible|
+          # ansible.become = true
+          ansible.verbose        = true
+          # ansible.install        = true
+          ansible.limit          = "ansible1" # "all" or only "nodes" group, etc.
+          ansible.playbook = "./vagrant_provisioner/disable_system_services.yml"
+        end
+
+        # # SELinux on CentOS and RHEL requires a reboot
+        node_config.vm.provision :reload
+
+        # Install dependency packages
+        node_config.vm.provision :ansible do |ansible|
+          # ansible.become = true
+          ansible.verbose        = true
+          # ansible.install        = true
+          # ansible.limit          = "ansible1" # "all" or only "nodes" group, etc.
+          ansible.playbook = "./vagrant_provisioner/install_dependencies.yml"
+        end
+        # Install Docker CE
+
+        # Install AWX
+        # node_config.vm.provision :shell, path: "./vagrant_provisioner/install-awx-post.sh"
+        # node_config.vm.provision :ansible_local do |ansible|
+        #   # ansible.become = true
+        #   ansible.verbose        = true
+        #   ansible.install        = true
+        #   # ansible.limit          = "ansible1" # "all" or only "nodes" group, etc.
+        #   ansible.inventory_path = "/vagrant/awx/installer/inventory"
+        #   ansible.playbook = "/vagrant/awx/installer/install.yml"
+        # end
+
       end
     end
   end
@@ -87,13 +121,19 @@ Vagrant.configure("2") do |config|
   # https://docs.vagrantup.com/v2/vagrantfile/tips.html
   (1..maxWin16host).each do |i|
     config.vm.define "answinsrvr16#{i}", autostart: false do |node|
-      node.vm.box = "StefanScherer/windows_2016"
-      # node.vm.box = "jmv74211/windows2016"
-      # node.vm.box_version = "1.0"
-      node.vm.hostname = "answin16#{i}"
+      node.vm.box               = "StefanScherer/windows_2016"
+      node.vm.hostname          = "answin16#{i}"
       # node.vm.network "public_network"
       node.vm.network :private_network, ip: "10.0.15.2#{i}"
-      node.vm.network "forwarded_port", guest: 80, host: "808#{i}"
+      node.vm.communicator      = "winrm"
+      node.vm.guest             = :windows
+      node.windows.halt_timeout = 25
+      node.winrm.username       = "vagrant"
+      node.winrm.password       = "vagrant"
+      node.winrm.host           = "localhost"
+      node.vm.network :forwarded_port, { :guest=>3389, :host=>3389, :id=>"rdp", :auto_correct=>true }
+      node.vm.network :forwarded_port, { :guest=>5985, :host=>5985, :id=>"winrm", :auto_correct=>true }
+
       node.vm.provider "virtualbox" do |vb|
         # vb.linked_clone = true
         vb.memory = "4096"
@@ -117,35 +157,33 @@ Vagrant.configure("2") do |config|
   end
   # Spinup Windows Server 2019. Inspired by the following repo
   # https://github.com/mrgaryg/docker-windows-box.git
-  maxWin19host = 1
-  # https://docs.vagrantup.com/v2/vagrantfile/tips.html
-  (1..maxWin19host).each do |i|
-    config.vm.define "win19#{i}", autostart: false do |node|
-    # node.vm.box = "jmv74211/windows2016"
-    # node.vm.box_version = "1.0"
-      node.vm.box = "StefanScherer/windows_2019"
-      node.vm.communicator = "winrm"
-      node.vm.hostname = "win19#{i}"
-      node.vm.network "public_network"
-      node.vm.network :private_network, ip: "10.0.15.1#{i}"
-      node.vm.network "forwarded_port", guest: 80, host: "808#{i}"
-      node.vm.provider "virtualbox" do |vb|
-        vb.linked_clone = true
-        vb.memory = "4096"
-        # Don't boot with headless mode
-        vb.gui = true
-        # Use VBoxManage to customize the VM.
-        # Change video memory:
-        vb.customize ["modifyvm", :id, "--vram", "64"]
-        # Change ostype:
-        vb.customize ["modifyvm", :id, "--ostype", "Windows2019_64"]
-        # VM is modified to have a host CPU execution cap of 50%,
-        # meaning that no matter how much CPU is used in the VM,
-        # no more than 50% would be used on your own host machine.
-        vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
-      end
-      node.vm.provision :hostmanager
-    end
-  end
+  # maxWin19host = 1
+  # # https://docs.vagrantup.com/v2/vagrantfile/tips.html
+  # (1..maxWin19host).each do |i|
+  #   config.vm.define "win19#{i}", autostart: false do |node|
+  #     node.vm.box = "StefanScherer/windows_2019"
+  #     node.vm.communicator = "winrm"
+  #     node.vm.hostname = "win19#{i}"
+  #     node.vm.network "public_network"
+  #     node.vm.network :private_network, ip: "10.0.15.1#{i}"
+  #     node.vm.network "forwarded_port", guest: 80, host: "808#{i}"
+  #     node.vm.provider "virtualbox" do |vb|
+  #       vb.linked_clone = true
+  #       vb.memory = "4096"
+  #       # Don't boot with headless mode
+  #       vb.gui = true
+  #       # Use VBoxManage to customize the VM.
+  #       # Change video memory:
+  #       vb.customize ["modifyvm", :id, "--vram", "64"]
+  #       # Change ostype:
+  #       vb.customize ["modifyvm", :id, "--ostype", "Windows2019_64"]
+  #       # VM is modified to have a host CPU execution cap of 50%,
+  #       # meaning that no matter how much CPU is used in the VM,
+  #       # no more than 50% would be used on your own host machine.
+  #       vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
+  #     end
+  #     node.vm.provision :hostmanager
+  #   end
+  # end
 
 end

@@ -4,7 +4,7 @@
       state: latest
   - name: install docker daemon
     yum:
-      name: 
+      name:
       - docker
       - python-pip
       state: latest

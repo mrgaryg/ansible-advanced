@@ -1,0 +1,28 @@
+---
+- name: Disable firewalld and selinux
+  hosts: all
+
+  tasks:
+  - name: stop firewalld if running
+    systemd:
+      name: firewalld
+      state: stopped
+      enabled: no
+
+  # Enable SELinux
+  - selinux:
+      policy: targeted
+      state: enforcing
+    when: selinux_enabled
+
+  # Put SELinux in permissive mode, logging actions that would be blocked.
+  - selinux:
+      policy: targeted
+      state: permissive
+    when: selinux_enabled
+
+  # Disable SELinux
+  - name: Disable SELinux
+    selinux:
+      state: disabled
+    when: not selinux_enabled and ansible_os_family == 'RedHat'
